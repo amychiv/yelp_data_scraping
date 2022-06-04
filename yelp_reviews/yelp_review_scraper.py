@@ -41,7 +41,7 @@ def hyphenate(stripped_restaurants):
 def get_reviews(hyphen_restaurants, city):
     non_valid = []
     reviews = {}
-    for restaurant in hyphen_restaurants[-12:-10]:
+    for restaurant in hyphen_restaurants:
         print(restaurant)
         # create the restaurant's url using the hyphenated names and provided city
         url = f"https://www.yelp.com/biz/{restaurant}-{city}"
