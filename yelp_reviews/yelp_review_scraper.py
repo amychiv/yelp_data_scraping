@@ -50,11 +50,20 @@ def get_reviews(hyphen_restaurants, city):
         review_information = {}
         reviews_list = []
         regex = r"(\d+)\sreviews"
+        regex2 = r"\d{1,2}\/\d{1,2}\/\d{4}"
 
         # extract comments, ratings, and review count from the restaurant's main Yelp page
         first_ten = soup.find_all('p', class_="comment__09f24__gu0rG")
         first_ten_stars = soup.find_all('div', class_="i-stars__09f24__M1AR7")
+        raw_first_ten_dates = soup.find_all('span', class_="css-chan6m")
         num_reviews_extract = soup.find_all('span', class_='css-1fdy0l5')
+
+        # extract review dates
+        first_ten_dates = []
+        for date in raw_first_ten_dates:
+            reg_input = re.findall(regex2, date.text)
+            if reg_input != []:
+                first_ten_dates.append(reg_input)
 
         # skips restaurant if not in city/url does not exist
         if first_ten == []:
@@ -72,9 +81,10 @@ def get_reviews(hyphen_restaurants, city):
 
         # builds a dictionary for the first 10 reviews
         for i in range(len(first_ten)):
-            rating = first_ten_stars[i]['aria-label']
+            rating = first_ten_stars[i+1]['aria-label']
             review = first_ten[i].text.strip()
             review_d = {}
+            review_d['date'] = first_ten_dates[i][0]
             review_d['rating'] = rating
             review_d['review'] = review
             reviews_list.append(review_d)
@@ -82,8 +92,7 @@ def get_reviews(hyphen_restaurants, city):
         # loops through the remaining reviews and adds to review dictionary
         # Note there are some descrepancies between the number of reviews scraped from the Yelp page header and the number 
         # returned from the scraping. I.e. sweet potato sensations has 135 reviews according to yelp, but the code returns 138 reviews.
-        # This is due to the double counting of multiple reviews - let's say a user reviews a restaurant in 2014, then they review 
-        # again in 2021, these reviews would be linked and the original review would be double counted.
+        # This is due to an owner responding to a review or the double counting of multiple reviews - let's say a user reviews a restaurant in 2014, then they review again in 2021, these reviews would be linked and the original review would be double counted.
         # Tried a couple of different duplicate remvoal strategies, but all of them resulted in lost data
         # If we do analysis with the resulatant csv files, prbably easiest to manually remove duplicates in excel
         counter = 10
@@ -93,12 +102,19 @@ def get_reviews(hyphen_restaurants, city):
             soup = BeautifulSoup(requests.get(new_url).text, 'html.parser')
             next_ten = soup.find_all('p', class_="comment__09f24__gu0rG")
             next_ten_stars = soup.find_all('div', class_="i-stars__09f24__M1AR7")
+            raw_next_ten_dates = soup.find_all('span', class_="css-chan6m")
+
+            next_ten_dates = []
+            for date in raw_next_ten_dates:
+                reg_input = re.findall(regex2, date.text)
+                if reg_input != []:
+                    next_ten_dates.append(reg_input)
 
             for i in range(len(next_ten)):
-                rating = next_ten_stars[i]['aria-label']
+                rating = next_ten_stars[i+1]['aria-label']
                 review = next_ten[i].text.strip()
-                
                 review_d = {}
+                review_d['date'] = next_ten_dates[i][0]
                 review_d['rating'] = rating
                 review_d['review'] = review
                 reviews_list.append(review_d)
@@ -111,11 +127,12 @@ def get_reviews(hyphen_restaurants, city):
         filename = f"review_csvs/{restaurant}.csv"
         with open(filename, "w") as csvfile:
             csvwriter = csv.writer(csvfile)
-            csvwriter.writerow(["rating", "review"])
+            csvwriter.writerow(["date", "rating", "review"])
             for subd in reviews[restaurant]['Yelp user reviews']:
+                date = subd['date']
                 rat = subd['rating']
                 rev = subd['review']
-                csvwriter.writerow([rat, rev])
+                csvwriter.writerow([date, rat, rev])
         print(f'done with {restaurant}')
 
     # prints number of reviews and the number of reviews scraped to see how many duplicates we have
